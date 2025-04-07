@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dice Betting Game</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 30px; }
+    .number-btn { padding: 10px 20px; margin: 5px; font-size: 18px; }
+    #result, #npc { margin-top: 20px; font-size: 20px; }
+  </style>
+</head>
+<body>
+
+  <h1>Choose a number (1-6)</h1>
+  <div id="buttons">
+    <button class="number-btn" onclick="selectNumber(1)">1</button>
+    <button class="number-btn" onclick="selectNumber(2)">2</button>
+    <button class="number-btn" onclick="selectNumber(3)">3</button>
+    <button class="number-btn" onclick="selectNumber(4)">4</button>
+    <button class="number-btn" onclick="selectNumber(5)">5</button>
+    <button class="number-btn" onclick="selectNumber(6)">6</button>
+  </div>
+
+  <h2 id="chosen">Selected: none</h2>
+
+  <button onclick="rollDice()">Roll the Dice</button>
+
+  <div id="result"></div>
+  <div id="npc"></div>
+
+  <script>
+    let selectedNumber = null;
+
+    function selectNumber(num) {
+      selectedNumber = num;
+      document.getElementById("chosen").innerText = `Selected: ${num}`;
+      document.getElementById("result").innerText = "";
+      document.getElementById("npc").innerText = "";
+    }
+
+function rollDice() {
+  if (!selectedNumber) {
+    alert("Please select a number first!");
+    return;
+  }
+
+  const diceRoll = Math.floor(Math.random() * 6) + 1;
+  const win = diceRoll === selectedNumber;
+  document.getElementById("result").innerText = `Dice rolled: ${diceRoll} — You ${win ? "win!" : "lose."}`;
+
+  // 👇 Mensagem curta só com os dados da jogada
+  const gameInfo = {
+    selected: selectedNumber,
+    rolled: diceRoll,
+    result: win ? "win" : "lose"
+  };
+
+  // Mensagem temporária de carregamento
+  document.getElementById("npc").innerText = "AI is thinking...";
+
+  fetch('https://b081b8a2-4aaf-4638-b314-947e465195c3-00-1udaoulp3hjyz.riker.replit.dev/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: gameInfo })
+  })
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById("npc").innerText = `NPC says: ${data.response}`;
+  })
+  .catch(err => {
+    document.getElementById("npc").innerText = "Error contacting NPC.";
+    console.error(err);
+  });
+}
+
+
+  </script>
+
+</body>
+</html>

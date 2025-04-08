@@ -1,16 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Dice Betting Game</title>
+  <title>eInstant Dice Game</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 30px; }
-    .number-btn { padding: 10px 20px; margin: 5px; font-size: 18px; }
-    #result, #npc { margin-top: 20px; font-size: 20px; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 30px;
+    }
+    .number-btn, button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 18px;
+    }
+    #result, #npc, #balance {
+      margin-top: 20px;
+      font-size: 20px;
+    }
+    textarea {
+      margin-top: 20px;
+      width: 80%;
+      font-size: 16px;
+      padding: 10px;
+    }
   </style>
 </head>
 <body>
 
-  <h1>Choose a number (1-6)</h1>
+  <h1>eInstant Dice Game</h1>
+
+  <div id="balance">Balance: €2000</div>
+
+  <h2>Choose your bet</h2>
+  <label><input type="radio" name="bet" value="1" checked> €1</label>
+  <label><input type="radio" name="bet" value="5"> €5</label>
+
+  <h2>Choose a number (1-6)</h2>
   <div id="buttons">
     <button class="number-btn" onclick="selectNumber(1)">1</button>
     <button class="number-btn" onclick="selectNumber(2)">2</button>
@@ -27,8 +52,22 @@
   <div id="result"></div>
   <div id="npc"></div>
 
+  <div style="margin-top: 40px;">
+    <h3>NPC Personality Prompt</h3>
+    <textarea id="npcPrompt" rows="4">
+You are an NPC in a gambling game. Your personality is fun, charismatic, and engaging. React to the player's wins and losses in an immersive way, making the experience entertaining. Answer with a maximum of 500 characters.
+    </textarea>
+  </div>
+
   <script>
     let selectedNumber = null;
+    let balance = 2000;
+    let currentBet = 1;
+    let thinkingInterval;
+
+    function updateBalance() {
+      document.getElementById("balance").innerText = `Balance: €${balance}`;
+    }
 
     function selectNumber(num) {
       selectedNumber = num;
@@ -37,42 +76,84 @@
       document.getElementById("npc").innerText = "";
     }
 
-function rollDice() {
-  if (!selectedNumber) {
-    alert("Please select a number first!");
-    return;
-  }
+    function rollDice() {
+      if (!selectedNumber) {
+        alert("Please select a number first!");
+        return;
+      }
 
-  const diceRoll = Math.floor(Math.random() * 6) + 1;
-  const win = diceRoll === selectedNumber;
-  document.getElementById("result").innerText = `Dice rolled: ${diceRoll} — You ${win ? "win!" : "lose."}`;
+      const betRadios = document.getElementsByName("bet");
+      for (let radio of betRadios) {
+        if (radio.checked) {
+          currentBet = parseInt(radio.value);
+          break;
+        }
+      }
 
-  // 👇 Mensagem curta só com os dados da jogada
-  const gameInfo = {
-    selected: selectedNumber,
-    rolled: diceRoll,
-    result: win ? "win" : "lose"
-  };
+      if (balance < currentBet) {
+        alert("Not enough balance!");
+        return;
+      }
 
-  // Mensagem temporária de carregamento
-  document.getElementById("npc").innerText = "AI is thinking...";
+      balance -= currentBet;
+      updateBalance();
 
-  fetch('https://b081b8a2-4aaf-4638-b314-947e465195c3-00-1udaoulp3hjyz.riker.replit.dev/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: gameInfo })
-  })
-  .then(res => res.json())
-  .then(data => {
-    document.getElementById("npc").innerText = `NPC says: ${data.response}`;
-  })
-  .catch(err => {
-    document.getElementById("npc").innerText = "Error contacting NPC.";
-    console.error(err);
-  });
-}
+      const ticket = Math.random() < 1/3 ? "Win" : "NotWin";
 
+      let diceRoll;
+      if (ticket === "Win") {
+        diceRoll = selectedNumber;
+      } else {
+        const options = [1, 2, 3, 4, 5, 6].filter(n => n !== selectedNumber);
+        diceRoll = options[Math.floor(Math.random() * options.length)];
+      }
 
+      const win = (diceRoll === selectedNumber);
+      const payout = win ? currentBet * 2 : 0;
+
+      if (win) balance += payout;
+      updateBalance();
+
+      const gameInfo = {
+        selected: selectedNumber,
+        rolled: diceRoll,
+        result: win ? "win" : "lose",
+        ticket: ticket,
+        bet: currentBet,
+        payout: payout
+      };
+
+      document.getElementById("result").innerText = "";
+
+      let dots = 1;
+      thinkingInterval = setInterval(() => {
+        document.getElementById("npc").innerText = "NPC is thinking" + ".".repeat(dots);
+        dots = dots === 3 ? 1 : dots + 1;
+      }, 500);
+
+      const npcPrompt = document.getElementById("npcPrompt").value;
+
+      fetch('https://b081b8a2-4aaf-4638-b314-947e465195c3-00-1udaoulp3hjyz.riker.replit.dev/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: gameInfo,
+          prompt: npcPrompt
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        clearInterval(thinkingInterval);
+        document.getElementById("result").innerText =
+          `Dice rolled: ${diceRoll} — You ${win ? "win!" : "lose."}`;
+        document.getElementById("npc").innerText = `NPC says: ${data.response}`;
+      })
+      .catch(err => {
+        clearInterval(thinkingInterval);
+        document.getElementById("npc").innerText = "Error contacting NPC.";
+        console.error(err);
+      });
+    }
   </script>
 
 </body>
